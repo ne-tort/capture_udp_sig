@@ -6,8 +6,14 @@ $Root = Split-Path $PSScriptRoot -Parent
 Set-Location $Root
 
 function Invoke-Docker {
-    & docker @args 2>&1 | ForEach-Object { Write-Host $_ }
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & docker @args
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    } finally {
+        $ErrorActionPreference = $prev
+    }
 }
 
 $Profile = if ($args[0]) { $args[0] } else { "dns" }
