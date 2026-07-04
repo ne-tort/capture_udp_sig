@@ -1,0 +1,5 @@
+{
+  "servers": ["sip.iptel.org:5060", "sip2sip.info:5060"],
+  "client_rounds": 3,
+  "iface": "eth0"
+}

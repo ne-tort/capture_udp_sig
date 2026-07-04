@@ -1,0 +1,4 @@
+{
+  "servers": ["time.google.com:123", "time.cloudflare.com:123"],
+  "client_polls": 2
+}

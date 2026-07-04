@@ -1,0 +1,5 @@
+{
+  "servers": ["sip.iptel.org:5060"],
+  "client_rounds": 1,
+  "iface": "eth0"
+}

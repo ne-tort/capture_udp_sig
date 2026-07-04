@@ -1,0 +1,10 @@
+{
+  "urls": [
+    "https://www.youtube.com/",
+    "https://www.google.com/",
+    "https://cloudflare-quic.com/"
+  ],
+  "https_quic_tcp": true,
+  "tls_clienthello_as_i1": true,
+  "split_coalesced": false
+}

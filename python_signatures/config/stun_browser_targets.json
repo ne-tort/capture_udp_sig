@@ -1,0 +1,9 @@
+{
+  "stun_url": "stun:stun.l.google.com:19302",
+  "servers": [
+    "stun.l.google.com:19302",
+    "stun1.l.google.com:19302"
+  ],
+  "iface": "eth0",
+  "use_response": true
+}

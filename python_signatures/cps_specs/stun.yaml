@@ -1,0 +1,7 @@
+slots:
+  i1:
+    - { offset: 0, length: 8, kind: static }
+    - { offset: 8, length: 12, kind: random_bytes }
+  i2:
+    - { offset: 0, length: 8, kind: static }
+    - { offset: 8, length: 12, kind: random_bytes }

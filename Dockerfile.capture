@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+# Live QUIC/STUN capture: Chromium + tcpdump (Windows Docker Desktop).
+# Layer order: base → apt → poetry deps (lock) → browser_capture src → app code.
+FROM mcr.microsoft.com/playwright/python:v1.61.0-jammy
+
+# Rarely changes — cached until this RUN block is edited.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tcpdump libpcap-dev dnsutils openssl curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && setcap cap_net_raw,cap_net_admin+eip /usr/bin/tcpdump
+
+WORKDIR /lab
+
+# --- Poetry + PyPI wheels (rebuild only when pyproject.toml / poetry.lock change) ---
+COPY pyproject.toml poetry.lock ./
+COPY browser_capture/pyproject.toml browser_capture/README.md ./browser_capture/
+# Editable path dep needs a package dir; real sources are copied in a later layer.
+RUN mkdir -p browser_capture/browser_capture \
+    && printf '' > browser_capture/browser_capture/__init__.py
+
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    --mount=type=cache,target=/var/cache/pypoetry,sharing=locked \
+    pip install poetry \
+    && poetry config virtualenvs.create false \
+    && poetry config cache-dir /var/cache/pypoetry \
+    && poetry install --no-interaction --no-ansi --only main
+
+# --- browser_capture sources (editable install picks up overwrites; no poetry re-run) ---
+COPY browser_capture/browser_capture ./browser_capture/browser_capture
+
+# --- Lab app (cheap COPY; most frequent edits land here) ---
+COPY siglab ./siglab
+COPY python_signatures ./python_signatures
+COPY capture_policy.yaml audit_capture.py analyze_pcap.py compare_architect.py ./
+COPY scripts ./scripts
+COPY scripts/docker_entrypoint.sh /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENV CAPTURE_IN_DOCKER=1
+ENV PYTHONUNBUFFERED=1
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["quic_browser"]

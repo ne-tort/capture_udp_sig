@@ -1,0 +1,7 @@
+{
+  "host": "1.1.1.1",
+  "port": 853,
+  "sni": "one.one.one.one",
+  "handshake_wait_sec": 12,
+  "iface": "eth0"
+}

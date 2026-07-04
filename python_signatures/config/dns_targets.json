@@ -1,0 +1,17 @@
+{
+  "resolver": "8.8.8.8",
+  "port": 53,
+  "iface": "eth0",
+  "post_trigger_wait": 3.5,
+  "domains": [
+    "ya.ru",
+    "google.com",
+    "cloudflare.com",
+    "example.com",
+    "wikipedia.org",
+    "github.com",
+    "microsoft.com",
+    "amazon.com"
+  ],
+  "query_types": ["A", "A", "AAAA", "A", "A", "AAAA", "A", "AAAA"]
+}

@@ -1,0 +1,21 @@
+# Build context trim — keeps COPY layers small and cache-friendly.
+output/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.git/
+.gitignore
+
+# Not needed inside capture image
+tests/
+protocol_workbook/
+browser_capture/tests/
+scripts/WSL_*.md
+scripts/wsl_*.sh
+sync_from_upstream.ps1
+README.md
+
+# Large / irrelevant artifacts
+**/*.pcap
+**/*.json.bak

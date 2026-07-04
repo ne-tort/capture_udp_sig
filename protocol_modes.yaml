@@ -1,0 +1,84 @@
+# Capture modes: separate profile_id when settings produce different I signatures/counts.
+schema_version: 1
+
+modes:
+  # --- QUIC family (browser + tcpdump) ---
+  quic:
+    family: quic
+    transport: browser
+    max_i: 5
+    variant: udp_chain
+    notes: Generic QUIC URLs; same collector as quic_browser.
+
+  quic_browser:
+    family: quic
+    transport: browser
+    max_i: 5
+    variant: udp_chain
+    notes: Tuned URLs (YouTube first); prod I1-I5 full UDP Initial chain.
+
+  quic_tls_browser:
+    family: quic
+    transport: browser
+    max_i: 5
+    variant: tls_clienthello_i1
+    notes: I1 = first TCP TLS ClientHello; I2-I5 = QUIC UDP chain (alt-svc path).
+
+  # --- STUN / WebRTC family ---
+  stun_browser:
+    family: stun
+    transport: browser
+    max_i: 2
+    variant: binding_out_in_cps
+    notes: WebRTC ICE; CPS hybrid on I1-I2; I3-I5 never.
+
+  stun:
+    family: stun
+    transport: browser
+    max_i: 2
+    variant: binding_out_in_raw
+    notes: Same capture as stun_browser but raw <b> in prod unless cps_specs apply.
+
+  webrtc:
+    family: stun
+    transport: browser
+    max_i: 1
+    variant: binding_out_only
+    notes: use_response=false — only outgoing Binding Request (I1).
+
+  # --- DNS / SIP / DTLS (CLI triggers) ---
+  dns:
+    family: dns
+    transport: dig
+    max_i: 5
+    variant: multi_query
+    notes: I1=query; I2-I5=distinct responses (up to 4 domains per run).
+
+  sip:
+    family: sip
+    transport: udp_socket
+    max_i: 2
+    variant: options_single
+    notes: One client OPTIONS; I2=200 OK (server reply to client request).
+
+  sip_multi:
+    family: sip
+    transport: udp_socket
+    max_i: 5
+    variant: options_multi_round
+    notes: 3 client OPTIONS rounds — alternating out/in; distinct CSeq per round.
+
+  dtls:
+    family: dtls
+    transport: openssl
+    max_i: 4
+    variant: dot_853_handshake
+    notes: Client-initiated DTLS handshake; 4 flights (CH/SH/CK/Finished) is protocol max.
+
+  # --- Extensions ---
+  ntp:
+    family: ntp
+    transport: udp_socket
+    max_i: 3
+    variant: mode3_multi_poll
+    notes: 2 client NTP polls — I1 out, I2 in, I3 out (second client request).

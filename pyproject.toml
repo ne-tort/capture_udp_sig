@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "capture-udp-sig"
+version = "0.3.0"
+description = "UDP capture → I1–I5 CPS strings for AmneziaWG 2 obfuscation"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4"
+pyyaml = "^6.0"
+scapy = "^2.7.0"
+
+[tool.poetry.group.browser]
+optional = true
+
+[tool.poetry.group.browser.dependencies]
+browser-capture = { path = "browser_capture", develop = true }
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+dnspython = "^2.7.0"
+
+[tool.poetry.scripts]
+siglab = "siglab.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"

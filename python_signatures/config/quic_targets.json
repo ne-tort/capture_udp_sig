@@ -1,0 +1,9 @@
+{
+  "urls": [
+    "https://www.youtube.com/",
+    "https://www.google.com/",
+    "https://cloudflare-quic.com/"
+  ],
+  "iface": "eth0",
+  "split_coalesced": true
+}
