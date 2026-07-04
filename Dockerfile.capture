@@ -23,7 +23,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     pip install poetry \
     && poetry config virtualenvs.create false \
     && poetry config cache-dir /var/cache/pypoetry \
-    && poetry install --no-interaction --no-ansi --only main
+    && poetry install --no-interaction --no-ansi --only main --with browser
 
 # --- browser_capture sources (editable install picks up overwrites; no poetry re-run) ---
 COPY browser_capture/browser_capture ./browser_capture/browser_capture
