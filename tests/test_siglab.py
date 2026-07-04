@@ -27,7 +27,7 @@ def test_features_browser_disabled():
     assert browser_capture_available() is False
     assert profile_available("dns") is True
     assert profile_available("quic_browser") is False
-    assert unavailable_reason("quic_browser") == "browser capture disabled (SIGLAB_NO_BROWSER)"
+    assert unavailable_reason("quic_browser") == "browser capture disabled (CAPTURE_NO_BROWSER)"
     assert "dns" not in BROWSER_PROFILE_IDS
 
 
