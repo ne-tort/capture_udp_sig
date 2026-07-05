@@ -1,7 +1,5 @@
 """
-Run all protocol signature collectors (signature-lab).
-
-Default: strict merge — no Architect fallback. Use --allow-architect-fallback to compare.
+Run all protocol signature collectors.
 """
 
 from __future__ import annotations
@@ -13,7 +11,6 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from python_signatures.architect_fallbacks import ARCHITECT_BUNDLE_DATE, ARCHITECT_BUNDLE_VERSION
 from python_signatures.base import CollectorOptions
 from python_signatures.browser_quic_collector import BrowserQuicSignatureCollector
 from python_signatures.browser_stun_collector import BrowserStunSignatureCollector
@@ -24,6 +21,7 @@ from python_signatures.cps_builder import apply_cps_specs_to_sig
 from python_signatures.features import profile_available, unavailable_reason
 from python_signatures.profile_cps import merge_collector_output_strict
 from python_signatures.slot_policy import get_slot_policy
+from python_signatures.template_pool import pick_random_panel_entry
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -43,21 +41,29 @@ PROTOCOL_REGISTRY = [
 ]
 
 
+def _profile_from_template_pool(profile_id: str) -> Optional[Dict[str, Any]]:
+    entry = pick_random_panel_entry(profile_id)
+    if not entry or not entry.get("i1"):
+        return None
+    return {
+        **entry,
+        "slot_sources": {k: "template_pool" for k in entry},
+        "incomplete_slots": [],
+    }
+
+
 def run_all(
     config_dir: Path,
     out_path: Path,
     timeout: int,
     dry_run: bool,
     *,
-    allow_architect_fallback: bool = False,
     strict: bool = False,
     policy_path: Optional[Path] = None,
     available_only: bool = False,
     skip_errors: bool = False,
+    use_template_on_failure: bool = True,
 ) -> Dict[str, Any]:
-    """
-    Run each collector; output profile_id -> { i1..i5, slot_sources, incomplete_slots }.
-    """
     profiles: Dict[str, Any] = {}
     skipped: List[str] = []
     any_incomplete = False
@@ -82,12 +88,17 @@ def run_all(
             timeout=timeout,
             dry_run=dry_run,
             registry_profile_id=profile_id,
-            allow_architect_fallback=allow_architect_fallback,
         )
         collector = collector_cls(opts)
         try:
             signatures = collector.collect()
         except Exception as e:
+            if skip_errors and use_template_on_failure:
+                tpl = _profile_from_template_pool(profile_id)
+                if tpl:
+                    logger.warning("Collector %s failed, using template pool: %s", profile_id, e)
+                    profiles[profile_id] = tpl
+                    continue
             if skip_errors:
                 logger.warning("Collector %s failed (skipped): %s", profile_id, e)
                 continue
@@ -95,13 +106,18 @@ def run_all(
             raise
 
         if not signatures or not isinstance(signatures[0].get("hex"), str):
+            if skip_errors and use_template_on_failure:
+                tpl = _profile_from_template_pool(profile_id)
+                if tpl:
+                    profiles[profile_id] = tpl
+                    continue
             raise ValueError(f"Collector {profile_id} returned no valid hex")
 
         sig = apply_cps_specs_to_sig(profile_id, signatures[0])
         merged = merge_collector_output_strict(
             profile_id,
             sig,
-            allow_architect=allow_architect_fallback,
+            allow_template_fallback=True,
             required_slots=required,
         )
         profile_out = merged.to_profile_dict()
@@ -120,9 +136,6 @@ def run_all(
 
     return {
         "_meta": {
-            "architect_bundle_version": ARCHITECT_BUNDLE_VERSION,
-            "architect_bundle_date": ARCHITECT_BUNDLE_DATE,
-            "allow_architect_fallback": allow_architect_fallback,
             "strict": strict,
             "dry_run": dry_run,
             "skipped_profiles": skipped,
@@ -132,37 +145,18 @@ def run_all(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Run signature collectors (lab: strict merge, provenance in JSON)."
-    )
-    parser.add_argument("--out", required=True, help="Output JSON path.")
-    parser.add_argument(
-        "--config-dir",
-        type=Path,
-        default=None,
-        help="Protocol config directory (default: package config/).",
-    )
-    parser.add_argument("--policy", type=Path, default=None, help="capture_policy.yaml path.")
+    parser = argparse.ArgumentParser(description="Run signature collectors.")
+    parser.add_argument("--out", required=True)
+    parser.add_argument("--config-dir", type=Path, default=None)
+    parser.add_argument("--policy", type=Path, default=None)
     parser.add_argument("--timeout", type=int, default=30)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument(
-        "--allow-architect-fallback",
-        action="store_true",
-        help="Fill missing I2-I5 from ARCHITECT_DEFAULTS (off by default).",
-    )
-    parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="Exit 1 if any profile has incomplete_slots.",
-    )
+    parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
 
     out_path = Path(args.out).resolve()
     config_dir = (args.config_dir or Path(__file__).resolve().parent / "config").resolve()
     policy_path = args.policy.resolve() if args.policy else None
-
-    if args.dry_run:
-        logger.warning("dry-run: fixtures/templates only")
 
     try:
         data = run_all(
@@ -170,7 +164,6 @@ def main(argv: list[str] | None = None) -> int:
             out_path,
             timeout=args.timeout,
             dry_run=args.dry_run,
-            allow_architect_fallback=args.allow_architect_fallback,
             strict=args.strict,
             policy_path=policy_path,
         )

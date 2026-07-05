@@ -1,7 +1,5 @@
 """
-Print merged i1–i5 CPS JSON for a dry-run fixture ``profile_id``.
-
-Usage: ``python -m python_signatures.export_merged_profile quic_rfc``
+Print merged i1–i5 CPS JSON for a dry-run fixture profile_id.
 """
 
 from __future__ import annotations
@@ -9,7 +7,6 @@ from __future__ import annotations
 import json
 import sys
 
-from python_signatures.architect_fallbacks import ARCHITECT_BUNDLE_DATE, ARCHITECT_BUNDLE_VERSION
 from python_signatures.dry_run_fixtures import load_dry_run_fixture
 from python_signatures.profile_cps import merge_collector_output
 
@@ -26,12 +23,7 @@ def main(argv: list[str] | None = None) -> int:
         v = fx.get(k)
         if isinstance(v, str) and v.strip():
             sig[k] = v.strip()
-    out = merge_collector_output(pid, sig)
-    print(
-        f"# ARCHITECT_BUNDLE_VERSION={ARCHITECT_BUNDLE_VERSION} "
-        f"ARCHITECT_BUNDLE_DATE={ARCHITECT_BUNDLE_DATE}",
-        file=sys.stderr,
-    )
+    out = merge_collector_output(pid, sig, allow_template_fallback=False)
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0
 

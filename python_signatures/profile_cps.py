@@ -1,8 +1,5 @@
 """
-Per-profile CPS merge for I1-I5 (signature-lab).
-
-Strict mode (default): no Architect fallback unless ``allow_architect=True``.
-Always records ``slot_sources`` and ``incomplete_slots``.
+Per-profile CPS merge for I1-I5.
 """
 
 from __future__ import annotations
@@ -11,7 +8,6 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from python_signatures.architect_fallbacks import ARCHITECT_DEFAULTS
 from python_signatures.provenance import (
     SLOT_KEYS,
     classify_slot,
@@ -20,16 +16,19 @@ from python_signatures.provenance import (
 
 SLOT_TAIL = ("i2", "i3", "i4", "i5")
 
+_KNOWN = frozenset({
+    "dns", "sip", "sip_multi", "dtls", "ntp",
+    "quic", "quic_browser", "quic_tls_browser",
+    "stun", "webrtc", "stun_browser",
+})
+
 
 def obfs_r_bytes() -> int:
-    """Legacy helper for tooling that still reads ``OBFS_R_BYTES`` from the environment."""
     return int(os.environ.get("OBFS_R_BYTES", "48"), 10)
 
 
 @dataclass
 class MergeResult:
-    """Full merge output with provenance."""
-
     i1: str = ""
     i2: Optional[str] = None
     i3: Optional[str] = None
@@ -50,7 +49,6 @@ class MergeResult:
         return out
 
     def to_legacy_dict(self) -> Dict[str, str]:
-        """Flat i1..i5 map (only filled slots)."""
         out: Dict[str, str] = {}
         for slot in SLOT_KEYS:
             val = getattr(self, slot)
@@ -66,53 +64,46 @@ def _validate_hex(sig: Dict[str, Any]) -> str:
     return hex_val.strip()
 
 
-def _ensure_arch_bundle(profile_id: str) -> Dict[str, str]:
-    arch = ARCHITECT_DEFAULTS.get(profile_id)
-    if arch is None:
-        raise ValueError(
-            f"unknown profile_id={profile_id!r}; add ARCHITECT_DEFAULTS entry"
-        )
-    for key in SLOT_TAIL:
-        if key not in arch:
-            raise ValueError(f"ARCHITECT_DEFAULTS[{profile_id!r}] must define {key!r}")
-    return arch
+def _ensure_known_profile(profile_id: str) -> None:
+    if profile_id not in _KNOWN:
+        raise ValueError(f"unknown profile_id={profile_id!r}")
 
 
 def merge_collector_output_strict(
     profile_id: str,
     sig: Dict[str, Any],
     *,
-    allow_architect: bool = False,
+    allow_template_fallback: bool = False,
     required_slots: Optional[List[str]] = None,
 ) -> MergeResult:
-    """
-    Build merge result with provenance.
-
-    - ``allow_architect=False`` (default): missing slots stay empty → ``incomplete_slots``.
-    - ``allow_architect=True``: fill gaps from ARCHITECT_DEFAULTS, source=architect.
-    - ``required_slots``: if set, only these slots must be filled for completeness check.
-    """
     hex_val = _validate_hex(sig)
-    arch = _ensure_arch_bundle(profile_id)
+    _ensure_known_profile(profile_id)
 
     result = MergeResult(i1=hex_val)
-    result.slot_sources["i1"] = classify_slot(
-        profile_id, sig, "i1", merged_value=hex_val, allow_architect=allow_architect
-    )
+    result.slot_sources["i1"] = classify_slot(profile_id, sig, "i1", merged_value=hex_val)
 
     for slot in SLOT_TAIL:
         raw = raw_capture_value(sig, slot)
         if raw:
             setattr(result, slot, raw)
             result.slot_sources[slot] = classify_slot(
-                profile_id, sig, slot, merged_value=raw, allow_architect=allow_architect
+                profile_id, sig, slot, merged_value=raw
             )
-        elif allow_architect:
-            val = arch[slot]
-            setattr(result, slot, val)
-            result.slot_sources[slot] = "architect"
         else:
             result.slot_sources[slot] = "missing"
+
+    if allow_template_fallback:
+        from python_signatures.template_pool import pick_random_entry
+
+        tpl = pick_random_entry(profile_id) or {}
+        for slot in SLOT_KEYS:
+            val = result.i1 if slot == "i1" else getattr(result, slot)
+            if not (isinstance(val, str) and val.strip()) and tpl.get(slot):
+                if slot == "i1":
+                    result.i1 = tpl[slot]
+                else:
+                    setattr(result, slot, tpl[slot])
+                result.slot_sources[slot] = "template_pool"
 
     check_slots = required_slots if required_slots is not None else list(SLOT_KEYS)
     result.incomplete_slots = []
@@ -127,15 +118,9 @@ def merge_collector_output(
     profile_id: str,
     sig: Dict[str, Any],
     *,
-    allow_architect: bool = True,
+    allow_template_fallback: bool = True,
 ) -> Dict[str, str]:
-    """Legacy flat merge (all five slots when allow_architect=True)."""
-    mr = merge_collector_output_strict(profile_id, sig, allow_architect=allow_architect)
-    out: Dict[str, str] = {"i1": mr.i1}
-    for slot in SLOT_TAIL:
-        val = getattr(mr, slot)
-        if isinstance(val, str) and val.strip():
-            out[slot] = val.strip()
-        elif allow_architect:
-            out[slot] = ARCHITECT_DEFAULTS[profile_id][slot]
-    return out
+    mr = merge_collector_output_strict(
+        profile_id, sig, allow_template_fallback=allow_template_fallback
+    )
+    return mr.to_legacy_dict()

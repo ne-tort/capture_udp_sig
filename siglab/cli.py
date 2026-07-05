@@ -150,7 +150,6 @@ def cmd_batch(args: argparse.Namespace) -> int:
         out_path,
         timeout=args.timeout,
         dry_run=args.dry_run,
-        allow_architect_fallback=args.allow_architect_fallback,
         strict=args.strict,
         policy_path=args.policy,
         skip_errors=True,
@@ -214,7 +213,7 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 
 def cmd_capabilities(args: argparse.Namespace) -> int:
-    from python_signatures.architect_fallbacks import ARCHITECT_BUNDLE_DATE, ARCHITECT_BUNDLE_VERSION
+    from python_signatures.template_pool import pool_size
 
     profiles = []
     for pid, _, _ in PROTOCOL_REGISTRY:
@@ -223,12 +222,11 @@ def cmd_capabilities(args: argparse.Namespace) -> int:
             "requires_browser": pid in BROWSER_PROFILE_IDS,
             "available": profile_available(pid),
             "unavailable_reason": unavailable_reason(pid),
+            "pool_size": pool_size(pid),
         })
     payload = {
         "browser_enabled": browser_capture_available(),
         "browser_disabled_env": browser_disabled_by_env(),
-        "architect_bundle_version": ARCHITECT_BUNDLE_VERSION,
-        "architect_bundle_date": ARCHITECT_BUNDLE_DATE,
         "profiles": profiles,
     }
     return _json_out(payload) if args.json else (print(json.dumps(payload, indent=2)) or 0)
@@ -265,7 +263,6 @@ def build_parser() -> argparse.ArgumentParser:
     pb.add_argument("--timeout", type=int, default=30)
     pb.add_argument("--dry-run", action="store_true")
     pb.add_argument("--strict", action="store_true")
-    pb.add_argument("--allow-architect-fallback", action="store_true")
     pb.add_argument("--format", choices=("lab", "panel"), default="lab")
     pb.add_argument("--include-unavailable", action="store_true", help="Try browser profiles even if deps missing")
     pb.set_defaults(func=cmd_batch)

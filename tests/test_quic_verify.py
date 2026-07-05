@@ -24,6 +24,28 @@ def test_parse_pure_b_tag_roundtrip():
     assert parse_pure_b_tag(cps) == payload
 
 
+def test_quic_tls_print_slot_reports_no_crash():
+    from python_signatures.protocol_verify import print_slot_reports, verify_quic_tls_slots
+    import io
+    import sys
+
+    profile = {
+        "i1": "<b 0x16030100aa010000a60303aabbccdd0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f>",
+        "i2": "<b 0xc700000001><rc 8><t><r 100>",
+    }
+    reports = verify_quic_tls_slots(profile)
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        print_slot_reports(reports)
+    finally:
+        sys.stdout = old
+    out = buf.getvalue()
+    assert "I1" in out
+    assert "quic" in out.lower() or "tls" in out.lower()
+
+
 def test_parse_rejects_hybrid_cps():
     assert parse_pure_b_tag("<b 0x01><rc 8><t>") is None
 
@@ -52,7 +74,7 @@ def test_partial_slots_ok_for_policy():
     mr = merge_collector_output_strict(
         "quic_browser",
         {"hex": "<b 0x01>", "i2": "<b 0x02>"},
-        allow_architect=False,
+        allow_template_fallback=False,
         required_slots=["i1"],
     )
     assert mr.incomplete_slots == []

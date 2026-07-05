@@ -27,6 +27,7 @@ class QuicSlotReport:
     present: bool
     byte_len: int = 0
     hex_nibbles: int = 0
+    protocol: str = "quic"
     long_header: bool = False
     quic_version: Optional[int] = None
     packet_type: str = "missing"

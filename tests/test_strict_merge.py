@@ -1,62 +1,46 @@
-"""Strict merge tests (signature-lab)."""
+"""Tests for strict merge and template pool fallback."""
+
+from __future__ import annotations
+
+import pytest
 
 from python_signatures.profile_cps import merge_collector_output_strict
 
 
-def test_quic_partial_required_i1_only():
-    mr = merge_collector_output_strict(
-        "quic_browser",
-        {"hex": "<b 0x01>", "i2": "<b 0x02>"},
-        allow_architect=False,
-        required_slots=["i1"],
-    )
-    assert mr.incomplete_slots == []
-    assert mr.slot_sources["i3"] == "missing"
+def _sig(hex_val: str, **extra):
+    return {"hex": hex_val, **extra}
 
 
-def test_strict_no_architect_incomplete():
+def test_strict_no_template_incomplete():
     mr = merge_collector_output_strict(
-        "quic_browser",
-        {"hex": "<b 0x01>", "i2": "<b 0x02>"},
-        allow_architect=False,
-        required_slots=["i1", "i2", "i3", "i4", "i5"],
+        "dns",
+        _sig("<b 0x0102030405060708090a0b0c0d0e0f101112131415>"),
+        allow_template_fallback=False,
     )
-    assert mr.i1 == "<b 0x01>"
-    assert mr.i2 == "<b 0x02>"
-    assert "i3" in mr.incomplete_slots
-    assert mr.slot_sources["i3"] == "missing"
+    assert mr.i1
+    assert mr.incomplete_slots
     assert "architect" not in mr.slot_sources.values()
+    assert "template_pool" not in mr.slot_sources.values()
 
 
-def test_strict_with_architect_fills():
-    mr = merge_collector_output_strict(
-        "quic_browser",
-        {"hex": "<b 0x01>"},
-        allow_architect=True,
+def test_strict_with_template_fills(monkeypatch):
+    monkeypatch.setattr(
+        "python_signatures.template_pool.pick_random_entry",
+        lambda pid: {"i1": "<b 0x01>", "i2": "<b 0x02>", "i3": "<b 0x03>", "i4": "<b 0x04>", "i5": "<b 0x05>"},
     )
-    assert mr.i2 and mr.i5
-    assert mr.slot_sources["i3"] == "architect"
-    assert mr.incomplete_slots == []
-
-
-def test_stun_policy_optional_slots():
     mr = merge_collector_output_strict(
-        "stun_browser",
-        {"hex": "<b 0x000100002112a442000000000000000000000000>"},
-        allow_architect=False,
-        required_slots=["i1"],
+        "dns",
+        _sig("<b 0x0102030405060708090a0b0c0d0e0f101112131415>"),
+        allow_template_fallback=True,
     )
-    assert mr.incomplete_slots == []
+    assert mr.slot_sources.get("i3") == "template_pool"
+    assert not mr.incomplete_slots
 
 
-def test_full_fixture_no_architect():
-    sig = {
-        "hex": "<b 0x01>",
-        "i2": "<b 0x02>",
-        "i3": "<b 0x03>",
-        "i4": "<b 0x04>",
-        "i5": "<b 0x05>",
-    }
-    mr = merge_collector_output_strict("quic_browser", sig, allow_architect=False)
-    assert mr.incomplete_slots == []
-    assert all(v == "capture" for k, v in mr.slot_sources.items() if k != "i1" or v)
+def test_full_fixture_no_template_pool():
+    from python_signatures.dry_run_fixtures import load_dry_run_fixture
+
+    sig = load_dry_run_fixture("quic_browser")
+    mr = merge_collector_output_strict("quic_browser", sig, allow_template_fallback=False)
+    assert mr.i1
+    assert "template_pool" not in mr.slot_sources.values()

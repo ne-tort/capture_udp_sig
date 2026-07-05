@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 from python_signatures.provenance import SLOT_KEYS, export_for_panel, export_prod_profile
 
-ProfileMap = Dict[str, str]
+ProfileMap = Dict[str, Any]
 PanelMap = Dict[str, ProfileMap]
 
 
@@ -43,6 +43,8 @@ def read_signatures_file(path: Path) -> PanelMap:
         if isinstance(payload, dict):
             entry = to_panel_entry(payload)
             if entry:
+                if isinstance(payload.get("_meta"), dict):
+                    entry["_meta"] = payload["_meta"]
                 out[pid] = entry
     return out
 
@@ -52,11 +54,20 @@ def write_panel_file(path: Path, data: PanelMap) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def merge_profile_into_panel(path: Path, profile_id: str, entry: ProfileMap) -> PanelMap:
+def merge_profile_into_panel(
+    path: Path,
+    profile_id: str,
+    entry: ProfileMap,
+    *,
+    meta: Dict[str, Any] | None = None,
+) -> PanelMap:
     data: PanelMap = {}
     if path.is_file():
         data = read_signatures_file(path)
-    data[profile_id] = entry
+    combined: ProfileMap = dict(entry)
+    if meta:
+        combined["_meta"] = meta
+    data[profile_id] = combined
     write_panel_file(path, data)
     return data
 

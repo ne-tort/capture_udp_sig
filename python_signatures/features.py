@@ -8,7 +8,6 @@ import os
 from functools import lru_cache
 from typing import FrozenSet
 
-# Profiles that need Playwright + browser_capture (Chromium/tcpdump live path).
 BROWSER_PROFILE_IDS: FrozenSet[str] = frozenset({
     "quic",
     "quic_browser",
@@ -38,8 +37,30 @@ def browser_capture_importable() -> bool:
         return False
 
 
+def _sidecar_capture_available() -> bool:
+    try:
+        from python_signatures.capture_docker import capture_via_docker
+        return capture_via_docker()
+    except ImportError:
+        return False
+
+
 def browser_capture_available() -> bool:
-    return browser_capture_importable() and not browser_disabled_by_env()
+    if browser_disabled_by_env():
+        return False
+    if browser_capture_importable():
+        return True
+    return _sidecar_capture_available()
+
+
+def live_capture_available() -> bool:
+    if os.environ.get("CAPTURE_IN_DOCKER") == "1":
+        return True
+    if _sidecar_capture_available():
+        return True
+    if browser_capture_importable():
+        return True
+    return not browser_disabled_by_env()
 
 
 def profile_requires_browser(profile_id: str) -> bool:
@@ -49,16 +70,34 @@ def profile_requires_browser(profile_id: str) -> bool:
 def profile_available(profile_id: str, *, dry_run: bool = False) -> bool:
     if dry_run:
         return True
+    if profile_requires_browser(profile_id) and browser_disabled_by_env():
+        return False
+    if os.environ.get("CAPTURE_IN_DOCKER") == "1":
+        if profile_requires_browser(profile_id):
+            return browser_capture_importable()
+        return True
+    if _sidecar_capture_available():
+        return True
     if profile_requires_browser(profile_id):
         return browser_capture_available()
     return True
 
 
 def unavailable_reason(profile_id: str) -> str | None:
-    if not profile_requires_browser(profile_id):
-        return None
-    if browser_disabled_by_env():
+    if profile_requires_browser(profile_id) and browser_disabled_by_env():
         return "browser capture disabled (CAPTURE_NO_BROWSER)"
-    if not browser_capture_importable():
-        return "browser-capture not installed (poetry install --with browser)"
-    return None
+    if profile_available(profile_id):
+        return None
+    if not _sidecar_capture_available():
+        from python_signatures.capture_docker import (
+            capture_docker_enabled,
+            capture_image_available,
+            docker_cli_available,
+        )
+        if capture_docker_enabled() and not docker_cli_available():
+            return "docker CLI unavailable (mount /var/run/docker.sock)"
+        if capture_docker_enabled() and not capture_image_available():
+            return "capture image missing (build capture-udp-sig:local)"
+    if profile_requires_browser(profile_id):
+        return "browser-capture not available"
+    return "live capture not available"

@@ -1,16 +1,17 @@
 """
-Python helpers for collecting real-world protocol signatures (DNS, QUIC, STUN, etc.).
-
-Each collector lives in its own module and can be run both as a library and as
-an executable script (CLI) for manual testing.
+Python helpers for AmneziaWG I1-I5 signature capture (capture_udp_sig).
 """
 
-from python_signatures.library_api import get_all_profiles, get_profile, known_profile_ids, regenerate_signatures
+from python_signatures.library_api import (
+    capture_profile,
+    get_profile,
+    known_profile_ids,
+    list_profiles_meta,
+)
 
 __all__ = [
+    "capture_profile",
     "get_profile",
-    "get_all_profiles",
     "known_profile_ids",
-    "regenerate_signatures",
+    "list_profiles_meta",
 ]
-

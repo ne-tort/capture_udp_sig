@@ -1,18 +1,14 @@
 """
-Provenance tracking and CPS validation for signature-lab.
-
-Classifies each I1-I5 slot as capture, template_hex, architect, cps_synth, or missing.
+Provenance tracking and CPS validation.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Literal, Optional
 
-from python_signatures.architect_fallbacks import ARCHITECT_DEFAULTS
-
-SlotSource = Literal["capture", "template_hex", "architect", "cps_synth", "missing"]
+SlotSource = Literal["capture", "template_hex", "template_pool", "cps_synth", "missing"]
 
 SLOT_KEYS = ("i1", "i2", "i3", "i4", "i5")
 CAPTURE_KEYS = ("hex", "i2", "i3", "i4", "i5")
@@ -46,7 +42,7 @@ class CpsIssue:
 class SlotDiff:
     slot: str
     capture_value: Optional[str]
-    architect_value: str
+    reference_value: str
     same: bool
     structural_note: str = ""
 
@@ -69,9 +65,7 @@ def classify_slot(
     slot: str,
     *,
     merged_value: Optional[str] = None,
-    allow_architect: bool = False,
 ) -> SlotSource:
-    """Classify provenance for one slot given raw collector sig."""
     kind = COLLECTOR_KIND.get(profile_id, "unknown")
     raw = raw_capture_value(sig, slot)
 
@@ -83,11 +77,6 @@ def classify_slot(
         if kind == "template":
             return "template_hex"
         return "capture"
-
-    if merged_value and allow_architect:
-        arch = ARCHITECT_DEFAULTS.get(profile_id, {}).get(slot, "")
-        if merged_value == arch:
-            return "architect"
 
     return "missing"
 
@@ -135,34 +124,6 @@ def validate_cps(cps: str, *, slot: str) -> List[CpsIssue]:
         issues.append(CpsIssue("info", "no_timestamp", f"{slot}: no <t> tag"))
 
     return issues
-
-
-def compare_with_architect(profile_id: str, merged: Dict[str, str]) -> List[SlotDiff]:
-    arch = ARCHITECT_DEFAULTS.get(profile_id, {})
-    diffs: List[SlotDiff] = []
-    for slot in SLOT_KEYS:
-        cap_val = merged.get(slot)
-        arch_val = arch.get(slot, "")
-        same = cap_val == arch_val if cap_val else False
-        note = ""
-        if cap_val and arch_val and not same:
-            cap_b = static_hex_byte_len(cap_val) or 0
-            arch_b = static_hex_byte_len(arch_val) or 0
-            if cap_b and arch_b:
-                note = f"static_hex_bytes capture={cap_b} architect={arch_b}"
-            if "<t>" in arch_val and "<t>" not in (cap_val or ""):
-                note = (note + "; architect has <t>, capture does not").strip("; ")
-        diffs.append(
-            SlotDiff(
-                slot=slot,
-                capture_value=cap_val,
-                architect_value=arch_val,
-                same=same,
-                structural_note=note,
-            )
-        )
-    return diffs
-
 
 def export_for_panel(profile: Dict[str, Any]) -> List[str]:
     """

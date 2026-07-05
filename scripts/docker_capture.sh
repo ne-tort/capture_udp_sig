@@ -9,12 +9,20 @@ cd "$ROOT"
 PROFILE="${1:-dns}"
 TIMEOUT="${2:-}"
 IMAGE="capture-udp-sig"
+BROWSER_PROFILES="quic quic_browser quic_tls_browser stun stun_browser webrtc"
+DOCKERFILE="Dockerfile.capture-lite"
+for p in $BROWSER_PROFILES; do
+  if [[ "$PROFILE" == "$p" ]]; then
+    DOCKERFILE="Dockerfile.capture"
+    break
+  fi
+done
 
 mkdir -p output
 
 export DOCKER_BUILDKIT=1
-echo "=== docker build $IMAGE ==="
-docker build -f Dockerfile.capture -t "$IMAGE" .
+echo "=== docker build $IMAGE ($DOCKERFILE) ==="
+docker build -f "$DOCKERFILE" -t "$IMAGE" .
 
 RUN=(run --rm --cap-add=NET_RAW --cap-add=NET_ADMIN -v "$ROOT/output:/lab/output" "$IMAGE" "$PROFILE")
 if [[ -n "$TIMEOUT" ]]; then

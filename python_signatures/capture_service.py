@@ -101,6 +101,32 @@ def capture_profile_live(
 
     profile_id, collector_cls, config_rel = _collector_for(pid)
     lab_root = Path(__file__).resolve().parent.parent
+    tmo = get_capture_timeout(profile_id, override=timeout)
+
+    if not dry_run:
+        import os
+        from python_signatures.capture_docker import (
+            capture_docker_enabled,
+            capture_via_docker,
+            run_profile_capture_docker,
+        )
+
+        in_capture_image = os.environ.get("CAPTURE_IN_DOCKER") == "1"
+        if not in_capture_image and capture_docker_enabled() and capture_via_docker():
+            dr = run_profile_capture_docker(profile_id, lab_root=lab_root, timeout=tmo)
+            if not dr.get("ok"):
+                return CaptureResult(ok=False, profile_id=profile_id, timeout_sec=tmo, error=dr.get("error"))
+            prod = dr["prod"]
+            from python_signatures.export_formats import to_panel_entry
+            entry = to_panel_entry(prod)
+            return CaptureResult(
+                ok=True,
+                profile_id=profile_id,
+                prod={**prod, "ok": True},
+                captured_slots=sorted(entry.keys()),
+                timeout_sec=tmo,
+            )
+
     cfg_path = (config_dir or Path(__file__).resolve().parent / "config") / config_rel
 
     from python_signatures.slot_policy import get_slot_policy
@@ -108,7 +134,6 @@ def capture_profile_live(
     policy = get_slot_policy(profile_id)
     required = policy.get("required_slots") or ["i1"]
     optional = policy.get("optional_slots") or [s for s in SLOT_KEYS if s not in required]
-    tmo = get_capture_timeout(profile_id, override=timeout)
 
     opts = CollectorOptions(
         config_path=cfg_path,
@@ -147,7 +172,7 @@ def capture_profile_live(
 
     sig = apply_cps_specs_to_sig(profile_id, raw)
     merged = merge_collector_output_strict(
-        profile_id, sig, allow_architect=False, required_slots=required,
+        profile_id, sig, allow_template_fallback=True, required_slots=required,
     )
     profile = merged.to_profile_dict()
     profile["_capture_meta"] = {
