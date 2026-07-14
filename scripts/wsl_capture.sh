@@ -15,5 +15,5 @@ if ! getcap "$(command -v tcpdump)" 2>/dev/null | grep -q cap_net_raw; then
 fi
 
 export CAPTURE_IFACE="$IFACE"
-poetry run python audit_capture.py --strict --profile "$PROFILE" --timeout "$TIMEOUT" \
+poetry run python scripts/live_capture.py --strict --profile "$PROFILE" --timeout "$TIMEOUT" \
   --out "output/live_${PROFILE}.json"

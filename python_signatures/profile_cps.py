@@ -118,7 +118,7 @@ def merge_collector_output(
     profile_id: str,
     sig: Dict[str, Any],
     *,
-    allow_template_fallback: bool = True,
+    allow_template_fallback: bool = False,
 ) -> Dict[str, str]:
     mr = merge_collector_output_strict(
         profile_id, sig, allow_template_fallback=allow_template_fallback

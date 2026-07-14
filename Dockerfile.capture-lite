@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
 
 COPY siglab ./siglab
 COPY python_signatures ./python_signatures
-COPY capture_policy.yaml audit_capture.py analyze_pcap.py ./
+COPY capture_policy.yaml analyze_pcap.py ./
 COPY scripts ./scripts
 COPY scripts/docker_entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh

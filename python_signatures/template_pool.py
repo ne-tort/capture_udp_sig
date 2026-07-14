@@ -1,5 +1,7 @@
 """
-Pre-captured template pool: random fallback when live capture fails or slots are missing.
+Fixed live-capture snapshots per profile (capture_001.json).
+
+Used only as offline defaults / panel seed — never Architect or synth tags.
 """
 
 from __future__ import annotations

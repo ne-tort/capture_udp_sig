@@ -30,7 +30,7 @@ class CollectorOptions:
     dry_run: bool = False
     # * Set by run_all: merge_collector_output(profile_id, sig) uses this registry id.
     registry_profile_id: Optional[str] = None
-    allow_architect_fallback: bool = False
+    allow_architect_fallback: bool = False  # deprecated; ignored — live capture only
 
 
 class SignatureCollector(abc.ABC):

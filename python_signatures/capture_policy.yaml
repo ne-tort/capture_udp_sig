@@ -1,25 +1,41 @@
-# Машиночитаемая политика слотов I1–I5: что может дать live capture, что добирается merge.
-# Подробности: BROWSER_PROFILES.md
-schema_version: 1
-description: >-
-  Which collector slots can be filled from live capture vs merge fallbacks.
+# Slot capture policy — live capture only (no Architect / synth fillers).
+schema_version: 2
+description: >
+  I1–I5 come only from live capture. Missing optional slots stay empty.
+  Bundled defaults are fixed snapshots in config/signatures.default.json
+  (refreshed from output/live_*.json).
 
 profiles:
+  dns:
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: dig / live DNS query+responses
+  sip:
+    capture_slots: [i1, i2]
+    source: SIP OPTIONS + response
+  sip_multi:
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: multi-round SIP OPTIONS
+  dtls:
+    capture_slots: [i1, i2, i3, i4]
+    source: openssl DTLS handshake
+  ntp:
+    capture_slots: [i1, i2, i3]
+    source: NTP client poll + replies
+  quic:
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: browser QUIC UDP chain
   quic_browser:
-    capture_slots: [hex, i2, i3, i4, i5]
-    source: >-
-      browser_capture.quic_packet_chain (up to 5 QUIC UDP payloads);
-      optional hex from TLS ClientHello if tls_clienthello_as_i1 + https_quic_tcp.
-    merge_fallback: ARCHITECT_DEFAULTS for any missing i2–i5 keys
-    notes: >-
-      Five distinct packets are not guaranteed per navigation; empty keys use Architect.
-
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: Chromium + tcpdump QUIC
+  quic_tls_browser:
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: TLS ClientHello + QUIC UDP
+  stun:
+    capture_slots: [i1, i2]
+    source: STUN Binding (i2 if response seen)
   stun_browser:
-    capture_slots: [hex, i2]
-    source: STUN Binding request / response UDP payloads
-    merge_fallback: i3–i5 from ARCHITECT_DEFAULTS when not in capture
-
-  quic_rfc:
-    capture_slots: [hex]
-    source: external collector or manual
-    merge_fallback: i2–i5 from ARCHITECT_DEFAULTS
+    capture_slots: [i1, i2]
+    source: Chromium WebRTC STUN
+  webrtc:
+    capture_slots: [i1]
+    source: WebRTC ICE Binding request only

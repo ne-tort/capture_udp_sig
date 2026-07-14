@@ -1,8 +1,7 @@
 """
-Library template profiles: CPS seeds from committed JSON (no live capture).
+Legacy loader for ``config/profile_templates/<id>.json`` (pure ``<b 0x...>``).
 
-Used for profile_ids without a dedicated browser trigger (dns, sip, dtls).
-``hex`` must start with ``<b 0x``; merge fills I2–I5 from ARCHITECT_DEFAULTS.
+Live collectors are preferred. Do not synthesize slots here.
 """
 
 from __future__ import annotations

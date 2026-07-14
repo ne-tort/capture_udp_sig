@@ -1,89 +1,41 @@
-# Signature-lab capture policy: required vs optional I slots per profile.
+# Slot capture policy — live capture only (no Architect / synth fillers).
 schema_version: 2
-description: Slot policy for strict merge (omit empty slots, no silent Architect).
+description: >
+  I1–I5 come only from live capture. Missing optional slots stay empty.
+  Bundled defaults are fixed snapshots in config/signatures.default.json
+  (refreshed from output/live_*.json).
 
 profiles:
   dns:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 5
-    capture_timeout_sec: 12
-    capture_slots: [hex]
-    notes: I1 from live dig; I2-I5 from distinct DNS responses when captured.
-
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: dig / live DNS query+responses
   sip:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 2
-    capture_timeout_sec: 15
-    capture_slots: [hex, i2]
-    notes: Single client OPTIONS; I2=server 200 OK when present.
-
+    capture_slots: [i1, i2]
+    source: SIP OPTIONS + response
   sip_multi:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 5
-    capture_timeout_sec: 18
-    capture_slots: [hex, i2]
-    notes: 3 client OPTIONS rounds — out,in,out,in,out; I5 may be out-only.
-
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: multi-round SIP OPTIONS
   dtls:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 4
-    capture_timeout_sec: 18
-    capture_slots: [hex, i2]
-    notes: Client-initiated DTLS handshake to 1.1.1.1:853; out/in alternation.
-
-  quic:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 5
-    capture_timeout_sec: 30
-    capture_slots: [hex, i2, i3, i4, i5]
-
-  quic_browser:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 5
-    capture_timeout_sec: 30
-    capture_slots: [hex, i2, i3, i4, i5]
-
-  quic_tls_browser:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 5
-    capture_timeout_sec: 30
-    capture_slots: [hex, i2, i3, i4, i5]
-    notes: I1=TCP TLS ClientHello; I2-I5=QUIC UDP chain (alt-svc).
-
-  stun_browser:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 2
-    capture_timeout_sec: 15
-    capture_slots: [hex, i2]
-    notes: I2 STUN response when server replies; I3-I5 never from browser STUN.
-
-  stun:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 2
-    capture_timeout_sec: 15
-    capture_slots: [hex, i2]
-
-  webrtc:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 1
-    capture_timeout_sec: 15
-    capture_slots: [hex, i2]
-    notes: use_response=false; only outbound STUN Binding (I1).
-
+    capture_slots: [i1, i2, i3, i4]
+    source: openssl DTLS handshake
   ntp:
-    required_slots: [i1]
-    optional_slots: [i2, i3, i4, i5]
-    max_slots: 3
-    capture_timeout_sec: 10
-    capture_slots: [hex]
-    notes: NTP client polls (default 2); I1/I3=out mode-3, I2=in mode-4.
+    capture_slots: [i1, i2, i3]
+    source: NTP client poll + replies
+  quic:
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: browser QUIC UDP chain
+  quic_browser:
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: Chromium + tcpdump QUIC
+  quic_tls_browser:
+    capture_slots: [i1, i2, i3, i4, i5]
+    source: TLS ClientHello + QUIC UDP
+  stun:
+    capture_slots: [i1, i2]
+    source: STUN Binding (i2 if response seen)
+  stun_browser:
+    capture_slots: [i1, i2]
+    source: Chromium WebRTC STUN
+  webrtc:
+    capture_slots: [i1]
+    source: WebRTC ICE Binding request only

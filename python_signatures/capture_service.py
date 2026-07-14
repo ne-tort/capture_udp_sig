@@ -171,8 +171,9 @@ def capture_profile_live(
             )
 
     sig = apply_cps_specs_to_sig(profile_id, raw)
+    # No template/architect fillers — prod JSON is capture-only.
     merged = merge_collector_output_strict(
-        profile_id, sig, allow_template_fallback=True, required_slots=required,
+        profile_id, sig, allow_template_fallback=False, required_slots=required,
     )
     profile = merged.to_profile_dict()
     profile["_capture_meta"] = {

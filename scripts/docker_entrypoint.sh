@@ -20,9 +20,6 @@ python scripts/live_capture.py "${ARGS[@]}"
 echo "[capture] prod  -> ${OUT}"
 echo "[capture] debug -> ${DEBUG}"
 
-python audit_capture.py --strict --profile "$PROFILE" \
-  --out "/lab/output/audit_${PROFILE}.json" 2>/dev/null || true
-
 python -c "
 import json
 from pathlib import Path

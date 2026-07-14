@@ -117,7 +117,7 @@ def run_all(
         merged = merge_collector_output_strict(
             profile_id,
             sig,
-            allow_template_fallback=True,
+            allow_template_fallback=False,
             required_slots=required,
         )
         profile_out = merged.to_profile_dict()
